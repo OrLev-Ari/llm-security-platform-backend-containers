@@ -26,7 +26,7 @@ echo ""
 
 # Step 2: Export HF_TOKEN from SSM Parameter Store
 echo "[2/5] Fetching HuggingFace token from SSM..."
-export HF_TOKEN=$(aws ssm get-parameter \
+HF_TOKEN=$(aws ssm get-parameter \
     --name "/llmplatformsecurity/hftoken" \
     --with-decryption \
     --query "Parameter.Value" \
@@ -44,7 +44,7 @@ echo ""
 
 # Step 3: Export QUEUE_URL from SQS
 echo "[3/5] Fetching SQS queue URL..."
-export QUEUE_URL=$(aws sqs get-queue-url \
+QUEUE_URL=$(aws sqs get-queue-url \
     --queue-name "LLmSecurityPlatformMessageQueue" \
     --query "QueueUrl" \
     --output text 2>&1)
@@ -60,13 +60,25 @@ echo ""
 
 # Step 4: Set AWS region
 echo "[4/5] Setting AWS region..."
-export AWS_REGION="us-east-1"
+AWS_REGION="us-east-1"
 echo "✓ AWS region set to: $AWS_REGION"
 echo ""
 
-# Step 5: Navigate to containers directory and start services
-echo "[5/5] Starting Docker containers..."
+# Step 5: Create .env file for docker-compose
+echo "[5/6] Creating .env file for Docker Compose..."
 cd "$(dirname "$0")/../containers"
+
+cat > .env <<EOF
+HF_TOKEN=${HF_TOKEN}
+QUEUE_URL=${QUEUE_URL}
+AWS_REGION=${AWS_REGION}
+EOF
+
+echo "✓ Environment file created"
+echo ""
+
+# Step 6: Start services
+echo "[6/6] Starting Docker containers..."
 
 if ! docker-compose up -d --build; then
     echo "ERROR: Failed to start Docker containers."
@@ -79,7 +91,7 @@ echo "=========================================="
 echo "✓ Deployment successful!"
 echo "=========================================="
 echo ""
-echo "Environment variables exported:"
+echo "Environment variables configured in .env file:"
 echo "  HF_TOKEN: [REDACTED]"
 echo "  QUEUE_URL: $QUEUE_URL"
 echo "  AWS_REGION: $AWS_REGION"
@@ -89,6 +101,6 @@ echo "  - model (port 8000)"
 echo "  - verifier (port 9000)"
 echo "  - worker (background)"
 echo ""
-echo "To view logs: docker-compose logs -f"
-echo "To stop services: docker-compose down"
+echo "To view logs: cd containers && docker-compose logs -f"
+echo "To stop services: cd containers && docker-compose down"
 echo "=========================================="
