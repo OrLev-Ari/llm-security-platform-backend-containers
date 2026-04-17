@@ -534,12 +534,29 @@ For production deployments with adequate resources (16GB+ RAM), use **Ministral-
    # To:
    MODEL_NAME = "mistralai/Ministral-8B-Instruct-2410"
    ```
-3. Rebuild and restart containers:
+3. **Important:** Modify the chat template configuration:
+   - The current implementation uses Llama's chat template format
+   - Ministral may use different formatting - test and adjust the `apply_chat_template` section if needed
+   - You may need to remove or modify the chat template code depending on Ministral's requirements
+   
+4. Rebuild and restart containers:
    ```bash
    cd ~/llm-security-platform-backend-containers/containers
    docker-compose down
    docker-compose up -d --build
    ```
+
+**Timeout Configuration:**
+
+The worker has a **60-second timeout** for verifier responses to accommodate LLM inference time. This works well for both models, but if you experience timeout errors:
+
+- Monitor logs: `docker-compose logs -f worker verifier`
+- If verifier takes longer than 60s, edit `containers/worker/worker.py`:
+  ```python
+  # Find this line and increase the timeout value:
+  timeout=60  # Change to 90 or 120 if needed
+  ```
+- Rebuild: `docker-compose up -d --build`
 
 **Verification Logic:**
 - Judge receives **system prompt** + **model response** (user prompt excluded for security)

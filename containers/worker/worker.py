@@ -172,7 +172,7 @@ def process_message(body):
         verifier_resp = requests.post(
             VERIFIER_URL,
             json={"system_prompt": system_prompt, "response": model_output},
-            timeout=20
+            timeout=60
         )
         print("--------------------------------------------------")
         print(f"[{session_id}/{prompt_id}] VERIFIER INPUT:")
