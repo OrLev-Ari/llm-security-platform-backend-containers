@@ -169,6 +169,7 @@ AWS CLI is pre-installed on Amazon Linux. For Ubuntu or to update:
 
 ```bash
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+sudo apt install unzip -y
 unzip awscliv2.zip
 sudo ./aws/install
 aws --version
