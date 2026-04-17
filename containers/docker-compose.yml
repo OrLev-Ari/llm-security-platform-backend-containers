@@ -1,14 +1,16 @@
-version: "3.9"
-
 services:
   model:
-    build: ./model
+    build:
+      context: ./model
+      dockerfile: DockerFile
     container_name: model
     ports:
       - "8000:8000"
 
   verifier:
-    build: ./verifier
+    build:
+      context: ./verifier
+      dockerfile: DockerFile
     container_name: verifier
     ports:
       - "9000:9000"
@@ -16,7 +18,9 @@ services:
       HF_TOKEN: ${HF_TOKEN}
 
   worker:
-    build: ./worker
+    build:
+      context: ./worker
+      dockerfile: DockerFile
     container_name: worker
     environment:
       QUEUE_URL: ${QUEUE_URL}
