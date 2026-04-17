@@ -140,5 +140,4 @@ Respond ONLY with valid JSON in this exact format:
 
     return {
         "verdict": verdict,
-        "raw_output": verdict
     }

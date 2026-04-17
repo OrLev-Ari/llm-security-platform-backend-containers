@@ -181,7 +181,7 @@ def process_message(body):
         print("--------------------------------------------------")
 
         verifier_latency = round(time.time() - verifier_start, 3)
-        verifier_output = verifier_resp.json().get("raw_output", "UNVERIFIED")
+        verifier_output = verifier_resp.json().get("verdict", "UNVERIFIED")
 
         print(f"[{session_id}/{prompt_id}] Verifier output={verifier_output} "
               f"({verifier_latency}s)")
