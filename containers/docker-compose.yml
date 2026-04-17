@@ -13,16 +13,16 @@ services:
     ports:
       - "9000:9000"
     environment:
-      HF_TOKEN: ""
+      HF_TOKEN: ${HF_TOKEN}
 
   worker:
     build: ./worker
     container_name: worker
     environment:
-      QUEUE_URL: "https://sqs.us-east-1.amazonaws.com/491135688871/LLmSecurityPlatformMessageQueue"
+      QUEUE_URL: ${QUEUE_URL}
       MODEL_API_URL: "http://model:8000/generate"
       VERIFIER_URL: "http://verifier:9000/verify"
-      AWS_REGION: "us-east-1"
+      AWS_REGION: ${AWS_REGION}
       PROMPTS_TABLE: "PromptsTable"
       CHALLENGE_SESSIONS_TABLE: "ChallengeSessionsTable"
       CHALLENGES_TABLE: "ChallengesTable"

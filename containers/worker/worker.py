@@ -3,6 +3,7 @@ import time
 import json
 import boto3
 import requests
+from datetime import datetime
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key
 import functools
@@ -25,17 +26,19 @@ VERIFIER_URL = os.getenv("VERIFIER_URL")
 
 def close_session(session_id):
     try:
+        now = datetime.utcnow().isoformat()
         challenge_sessions_table.update_item(
             Key={"session_id": session_id},
-            UpdateExpression="SET #status = :s",
+            UpdateExpression="SET #status = :s, completed_at = :t",
             ExpressionAttributeNames={
                 "#status": "status"
             },
             ExpressionAttributeValues={
-                ":s": "completed"
+                ":s": "completed",
+                ":t": now
             }
         )
-        print(f"[{session_id}] Session COMPLETED")
+        print(f"[{session_id}] Session COMPLETED at {now}")
 
     except ClientError as e:
         print(f"[{session_id}] Failed to close session: {e}")
@@ -163,30 +166,27 @@ def process_message(body):
     # --- Call verifier API ---
     try:
         print(f"[{session_id}/{prompt_id}] Sending response to verifier")
-        verifier_prompt = ""
-        if system_prompt:
-            verifier_prompt += system_prompt + "\n\n"
-        verifier_prompt += f"User: {prompt}"
+        
         verifier_start = time.time()
 
         verifier_resp = requests.post(
             VERIFIER_URL,
-            json={"prompt": verifier_prompt, "response": model_output},
+            json={"system_prompt": system_prompt, "response": model_output},
             timeout=20
         )
         print("--------------------------------------------------")
-        print(f"[{session_id}/{prompt_id}] FULL PROMPT TO VERIFIER:")
-        print(verifier_prompt)
-        print(model_output)
+        print(f"[{session_id}/{prompt_id}] VERIFIER INPUT:")
+        print(f"System Prompt: {system_prompt}")
+        print(f"Model Output: {model_output}")
         print("--------------------------------------------------")
 
         verifier_latency = round(time.time() - verifier_start, 3)
-        verifier_output = verifier_resp.json().get("raw_output", "UNKNOWN")
+        verifier_output = verifier_resp.json().get("raw_output", "UNVERIFIED")
 
         print(f"[{session_id}/{prompt_id}] Verifier output={verifier_output} "
               f"({verifier_latency}s)")
 
-        if verifier_output != "SAFE":
+        if verifier_output == "JAILBREAK":
             close_session(session_id)
     except Exception as e:
         print(f"[{session_id}/{prompt_id}] Verifier ERROR:", e)
