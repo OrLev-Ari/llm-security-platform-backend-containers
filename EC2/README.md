@@ -16,7 +16,7 @@ This guide walks you through deploying the LLM Security Platform on AWS EC2. The
 
 ### Instance Specifications
 - **Instance Type**: `m7i-flex.large` (or larger)
-- **Minimum RAM**: **20GB** (required for Ministral-8B judge model)
+- **Minimum RAM**: **8GB** (for default Llama-3.2-1B model) or **16GB+** (for recommended Ministral-8B)
 - **Operating System**: Amazon Linux 2023 or Ubuntu 22.04 LTS
 - **Storage**: At least 20GB EBS volume
 - **Security Group**: Allow inbound SSH (port 22) from your IP
@@ -505,16 +505,41 @@ aws ssm put-parameter \
 - Or run: `newgrp docker`
 
 ### Container Out of Memory
-- Verify instance has at least 20GB RAM: `free -h`
+- Check which model you're using (default Llama-3.2-1B or Ministral-8B)
+- Llama-3.2-1B needs ~6GB RAM, Ministral-8B needs ~16-20GB RAM
+- Verify available memory: `free -h`
 - Consider adding swap space (see Architecture Notes below)
-- Upgrade to larger instance type if needed
+- For Ministral-8B, upgrade to instance with 16GB+ RAM
 
 ---
 
 ## Architecture Notes
 
 ### Verifier Model
-The system uses **Ministral-8B-Instruct** (`mistralai/Ministral-8B-Instruct-2410`) as a security judge to verify model responses.
+
+**Default Configuration (Low Memory):**  
+The system currently uses **Llama-3.2-1B-Instruct** (`meta-llama/Llama-3.2-1B-Instruct`) as the security judge. This lightweight model requires only ~4-6GB RAM and is suitable for testing and limited-resource environments.
+
+**Recommended Production Configuration:**  
+For production deployments with adequate resources (16GB+ RAM), use **Ministral-8B-Instruct** (`mistralai/Ministral-8B-Instruct-2410`) for significantly better accuracy and reliability.
+
+**How to switch to Ministral-8B:**
+
+1. Ensure your instance has at least 16GB RAM (e.g., `m7i-flex.large` or larger)
+2. Edit `containers/verifier/app.py` and change the `MODEL_NAME`:
+   ```python
+   # Change from:
+   MODEL_NAME = "meta-llama/Llama-3.2-1B-Instruct"
+   
+   # To:
+   MODEL_NAME = "mistralai/Ministral-8B-Instruct-2410"
+   ```
+3. Rebuild and restart containers:
+   ```bash
+   cd ~/llm-security-platform-backend-containers/containers
+   docker-compose down
+   docker-compose up -d --build
+   ```
 
 **Verification Logic:**
 - Judge receives **system prompt** + **model response** (user prompt excluded for security)
@@ -524,7 +549,11 @@ The system uses **Ministral-8B-Instruct** (`mistralai/Ministral-8B-Instruct-2410
 - Parse errors → marked as `UNVERIFIED`
 
 ### Memory Considerations
-The Ministral-8B model requires approximately **20GB RAM**. If your instance has limited physical RAM, configure swap space:
+
+**Current model (Llama-3.2-1B)**: Requires ~4-6GB RAM  
+**Recommended model (Ministral-8B)**: Requires ~16-20GB RAM  
+
+If using Ministral-8B on an instance with limited physical RAM, configure swap space:
 
 ```bash
 sudo fallocate -l 8G /swapfile

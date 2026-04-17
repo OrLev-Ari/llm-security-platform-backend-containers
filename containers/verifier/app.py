@@ -9,7 +9,9 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 # Configuration
 # =========================
 
-MODEL_NAME = "mistralai/Ministral-8B-Instruct-2410"
+# Default to a lightweight model for limited RAM environments
+# For production with 16GB+ RAM, use: "mistralai/Ministral-8B-Instruct-2410"
+MODEL_NAME = "meta-llama/Llama-3.2-1B-Instruct"
 HF_TOKEN = os.environ.get("HF_TOKEN")
 
 if not HF_TOKEN:
@@ -22,6 +24,7 @@ if not HF_TOKEN:
 app = FastAPI()
 
 print("Loading Ministral-8B-Instruct judge model...")
+print("This may take several minutes on first run...")
 
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, token=HF_TOKEN)
 model = AutoModelForCausalLM.from_pretrained(
