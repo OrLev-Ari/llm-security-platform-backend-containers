@@ -9,7 +9,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 # Configuration
 # =========================
 
-MODEL_NAME = "mistralai/Ministral-3-8B-Instruct-2512"
+MODEL_NAME = "mistralai/Ministral-8B-Instruct-2410"
 HF_TOKEN = os.environ.get("HF_TOKEN")
 
 if not HF_TOKEN:
@@ -21,13 +21,13 @@ if not HF_TOKEN:
 
 app = FastAPI()
 
-print("Loading Mistral-3-8B-Instruct judge model...")
+print("Loading Ministral-8B-Instruct judge model...")
 
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, use_auth_token=HF_TOKEN)
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, token=HF_TOKEN)
 model = AutoModelForCausalLM.from_pretrained(
     MODEL_NAME,
-    use_auth_token=HF_TOKEN,
-    torch_dtype=torch.float32,  # CPU-friendly
+    token=HF_TOKEN,
+    dtype=torch.float32,  # CPU-friendly
     device_map="cpu"
 )
 model.eval()

@@ -16,7 +16,7 @@ This guide walks you through deploying the LLM Security Platform on AWS EC2. The
 
 ### Instance Specifications
 - **Instance Type**: `m7i-flex.large` (or larger)
-- **Minimum RAM**: **20GB** (required for Mistral-3-8B judge model)
+- **Minimum RAM**: **20GB** (required for Ministral-8B judge model)
 - **Operating System**: Amazon Linux 2023 or Ubuntu 22.04 LTS
 - **Storage**: At least 20GB EBS volume
 - **Security Group**: Allow inbound SSH (port 22) from your IP
@@ -463,7 +463,7 @@ aws ssm put-parameter \
 ## Architecture Notes
 
 ### Verifier Model
-The system uses **Mistral-3-8B-Instruct** (`mistralai/Ministral-3-8B-Instruct-2512`) as a security judge to verify model responses.
+The system uses **Ministral-8B-Instruct** (`mistralai/Ministral-8B-Instruct-2410`) as a security judge to verify model responses.
 
 **Verification Logic:**
 - Judge receives **system prompt** + **model response** (user prompt excluded for security)
@@ -473,7 +473,7 @@ The system uses **Mistral-3-8B-Instruct** (`mistralai/Ministral-3-8B-Instruct-25
 - Parse errors → marked as `UNVERIFIED`
 
 ### Memory Considerations
-The Mistral-3-8B model requires approximately **20GB RAM**. If your instance has limited physical RAM, configure swap space:
+The Ministral-8B model requires approximately **20GB RAM**. If your instance has limited physical RAM, configure swap space:
 
 ```bash
 sudo fallocate -l 8G /swapfile
