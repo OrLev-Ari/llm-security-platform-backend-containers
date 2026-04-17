@@ -1,0 +1,18 @@
+FROM python:3.10
+
+WORKDIR /app
+
+# install deps
+RUN pip install fastapi uvicorn[standard] llama-cpp-python
+
+# copy FastAPI server file
+COPY server.py .
+
+# copy GGUF model into the image
+COPY models/ /app/models/
+
+# expose API port
+EXPOSE 8000
+
+# run server
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]

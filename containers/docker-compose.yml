@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  model:
+    build: ./model
+    container_name: model
+    ports:
+      - "8000:8000"
+
+  verifier:
+    build: ./verifier
+    container_name: verifier
+    ports:
+      - "9000:9000"
+    environment:
+      HF_TOKEN: ""
+
+  worker:
+    build: ./worker
+    container_name: worker
+    environment:
+      QUEUE_URL: "https://sqs.us-east-1.amazonaws.com/491135688871/LLmSecurityPlatformMessageQueue"
+      MODEL_API_URL: "http://model:8000/generate"
+      VERIFIER_URL: "http://verifier:9000/verify"
+      AWS_REGION: "us-east-1"
+      PROMPTS_TABLE: "PromptsTable"
+      CHALLENGE_SESSIONS_TABLE: "ChallengeSessionsTable"
+      CHALLENGES_TABLE: "ChallengesTable"
+    depends_on:
+      - model
+      - verifier
