@@ -46,7 +46,6 @@ class VerifyRequest(BaseModel):
 
 class VerifyResponse(BaseModel):
     verdict: str
-    raw_output: str
 
 # =========================
 # Routes
@@ -139,5 +138,5 @@ Respond ONLY with valid JSON in this exact format:
     print(f"Verdict: {verdict}")
 
     return {
-        "verdict": verdict,
+        "verdict": verdict
     }
