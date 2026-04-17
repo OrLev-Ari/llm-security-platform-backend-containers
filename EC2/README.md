@@ -247,7 +247,58 @@ cd llm-security-platform-backend-containers
 
 ---
 
-## Step 7: Run the Deployment Script
+## Step 7: Copy GGUF Model to EC2
+
+**Important:** The GGUF model file is not included in the repository and must be copied separately.
+
+### From Your Local Machine
+
+The model container expects a GGUF model file at `containers/model/models/qwen2.5-0.5b-instruct-q3_k_m.gguf`. ( you can switch it to a different model of course )
+
+**Copy the model file using SCP:**
+
+```bash
+# From your local machine (replace paths and IP accordingly)
+scp -i /path/to/your-key.pem \
+    /path/to/qwen2.5-0.5b-instruct-q3_k_m.gguf \
+    ec2-user@<EC2_PUBLIC_IP>:~/llm-security-platform-backend-containers/containers/model/models/
+```
+
+**For Ubuntu instances**, replace `ec2-user` with `ubuntu`.
+
+**Alternative - if you need to create the directory first:**
+
+```bash
+# SSH into EC2
+ssh -i /path/to/your-key.pem ec2-user@<EC2_PUBLIC_IP>
+
+# Create the models directory
+mkdir -p ~/llm-security-platform-backend-containers/containers/model/models
+
+# Exit and copy from local machine
+exit
+
+# Copy the file
+scp -i /path/to/your-key.pem \
+    /path/to/qwen2.5-0.5b-instruct-q3_k_m.gguf \
+    ec2-user@<EC2_PUBLIC_IP>:~/llm-security-platform-backend-containers/containers/model/models/
+```
+
+**Verify the file was copied:**
+
+```bash
+# SSH back into EC2
+ssh -i /path/to/your-key.pem ec2-user@<EC2_PUBLIC_IP>
+
+# Check the file exists
+ls -lh ~/llm-security-platform-backend-containers/containers/model/models/
+```
+
+You should see the GGUF file listed.
+
+---
+
+## Step 8: Run the Deployment Script
 
 Now you're ready to deploy!
 
@@ -301,7 +352,7 @@ Building worker...
 
 ---
 
-## Step 8: Verify Deployment
+## Step 9: Verify Deployment
 
 ### Check Running Containers
 
