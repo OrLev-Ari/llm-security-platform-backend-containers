@@ -23,7 +23,8 @@ This guide walks you through deploying the LLM Security Platform on AWS EC2. The
 
 ### IAM Role Setup (Recommended)
 Should be already deployed in your account if you've used the llm-security-platform-backend repository, called EC2LLMPlatformSecurityInstanceProfile.
-Create an IAM role with the following permissions and attach it to your EC2 instance:
+
+If not, create an IAM role with the following permissions and attach it to your EC2 instance:
 
 **Required Permissions:**
 - `ssm:GetParameter` - to retrieve HuggingFace token from Parameter Store
