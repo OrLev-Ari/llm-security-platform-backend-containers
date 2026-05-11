@@ -30,6 +30,8 @@ services:
       PROMPTS_TABLE: "PromptsTable"
       CHALLENGE_SESSIONS_TABLE: "ChallengeSessionsTable"
       CHALLENGES_TABLE: "ChallengesTable"
+      CHALLENGE_SCORES_TABLE: "ChallengeScoresTable"
+      GLOBAL_SCORES_TABLE: "GlobalScoresTable"
     depends_on:
       - model
       - verifier

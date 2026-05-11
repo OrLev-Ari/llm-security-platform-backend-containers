@@ -18,6 +18,8 @@ dynamodb = boto3.resource("dynamodb", region_name=os.getenv("AWS_REGION"))
 prompts_table = dynamodb.Table(os.getenv("PROMPTS_TABLE"))
 challenge_sessions_table = dynamodb.Table(os.getenv("CHALLENGE_SESSIONS_TABLE"))
 challenges_table = dynamodb.Table(os.getenv("CHALLENGES_TABLE"))
+challenge_scores_table = dynamodb.Table(os.getenv("CHALLENGE_SCORES_TABLE"))
+global_scores_table = dynamodb.Table(os.getenv("GLOBAL_SCORES_TABLE"))
 
 # Environment variables
 QUEUE_URL = os.getenv("QUEUE_URL")
@@ -27,6 +29,23 @@ VERIFIER_URL = os.getenv("VERIFIER_URL")
 def close_session(session_id):
     try:
         now = datetime.utcnow().isoformat()
+        
+        # Get session data for scoring
+        session_resp = challenge_sessions_table.get_item(Key={"session_id": session_id})
+        session = session_resp.get("Item")
+        
+        if not session:
+            print(f"[{session_id}] Session not found for scoring")
+            return
+        
+        user_id = session.get("user_id")
+        challenge_id = session.get("challenge_id")
+        started_at_str = session.get("started_at")
+        
+        if not all([user_id, challenge_id, started_at_str]):
+            print(f"[{session_id}] Missing data for scoring (user_id={user_id}, challenge_id={challenge_id})")
+        
+        # Update session status to completed
         challenge_sessions_table.update_item(
             Key={"session_id": session_id},
             UpdateExpression="SET #status = :s, completed_at = :t",
@@ -39,9 +58,128 @@ def close_session(session_id):
             }
         )
         print(f"[{session_id}] Session COMPLETED at {now}")
+        
+        # Calculate score if we have all required data
+        if all([user_id, challenge_id, started_at_str]):
+            # Count prompts for this session
+            prompts_resp = prompts_table.query(
+                KeyConditionExpression=Key("session_id").eq(session_id)
+            )
+            prompt_count = len(prompts_resp.get("Items", []))
+            
+            # Calculate time taken in minutes
+            started_at = datetime.fromisoformat(started_at_str.replace('Z', '+00:00'))
+            completed_at = datetime.fromisoformat(now.replace('Z', '+00:00'))
+            time_seconds = (completed_at - started_at).total_seconds()
+            time_minutes = time_seconds / 60.0
+            
+            # Apply scoring formula with free prompt and free time
+            # First prompt is free, first 5 minutes are free
+            billable_prompts = max(prompt_count - 1, 0)
+            billable_minutes = max(time_minutes - 5, 0)
+            
+            prompt_penalty = min(billable_prompts * 2, 50)
+            time_penalty = min(billable_minutes * 0.5, 30)
+            final_score = int(100 - prompt_penalty - time_penalty)  # Round down to integer
+            
+            print(f"[{session_id}] Score calculation: prompts={prompt_count} (billable={billable_prompts}), time={time_minutes:.2f}m (billable={billable_minutes:.2f}m), score={final_score}")
+            
+            # Update leaderboard scores
+            update_leaderboard_scores(
+                user_id=user_id,
+                challenge_id=challenge_id,
+                score=final_score,
+                prompt_count=prompt_count,
+                time_seconds=int(time_seconds),
+                completed_at=now,
+                session_id=session_id
+            )
 
     except ClientError as e:
         print(f"[{session_id}] Failed to close session: {e}")
+    except Exception as e:
+        print(f"[{session_id}] Error during session closure: {e}")
+
+# -------------------------------------------------
+# Update leaderboard scores
+# -------------------------------------------------
+def update_leaderboard_scores(user_id, challenge_id, score, prompt_count, time_seconds, completed_at, session_id):
+    """
+    Updates ChallengeScoresTable and GlobalScoresTable with new score.
+    Only updates if new score is better than existing score (or if no existing score).
+    """
+    try:
+        print(f"[{session_id}] Updating leaderboard for user={user_id}, challenge={challenge_id}, score={score:.2f}")
+        
+        # Get existing score for this user/challenge combination
+        existing_score_resp = challenge_scores_table.get_item(
+            Key={"user_id": user_id, "challenge_id": challenge_id}
+        )
+        existing_item = existing_score_resp.get("Item")
+        existing_score = existing_item.get("score") if existing_item else None
+        
+        # Only update if new score is better or no existing score
+        if existing_score is None or score > existing_score:
+            score_delta = score - (existing_score if existing_score else 0)
+            is_new_challenge = existing_score is None
+            
+            print(f"[{session_id}] Score improvement: old={existing_score}, new={score:.2f}, delta={score_delta:.2f}")
+            
+            # Update ChallengeScoresTable
+            challenge_scores_table.put_item(
+                Item={
+                    "user_id": user_id,
+                    "challenge_id": challenge_id,
+                    "score": int(score),  # Convert to int for cleaner storage
+                    "prompt_count": prompt_count,
+                    "time_seconds": time_seconds,
+                    "completed_at": completed_at,
+                    "session_id": session_id
+                }
+            )
+            print(f"[{session_id}] ChallengeScoresTable updated")
+            
+            # Update GlobalScoresTable
+            # Get current global score
+            global_score_resp = global_scores_table.get_item(Key={"user_id": user_id})
+            global_item = global_score_resp.get("Item")
+            
+            if global_item:
+                # User exists, update total_score
+                current_total = global_item.get("total_score", 0)
+                current_challenges = global_item.get("challenges_completed", 0)
+                new_total = current_total + score_delta
+                new_challenges = current_challenges + (1 if is_new_challenge else 0)
+                
+                global_scores_table.put_item(
+                    Item={
+                        "user_id": user_id,
+                        "total_score": int(new_total),
+                        "challenges_completed": new_challenges,
+                        "last_updated": completed_at,
+                        "leaderboard_type": "GLOBAL"  # Fixed partition key for GSI
+                    }
+                )
+                print(f"[{session_id}] GlobalScoresTable updated: total={new_total:.2f}, challenges={new_challenges}")
+            else:
+                # New user, create initial record
+                global_scores_table.put_item(
+                    Item={
+                        "user_id": user_id,
+                        "total_score": int(score),
+                        "challenges_completed": 1,
+                        "last_updated": completed_at,
+                        "leaderboard_type": "GLOBAL"  # Fixed partition key for GSI
+                    }
+                )
+                print(f"[{session_id}] GlobalScoresTable created for new user: total={score:.2f}")
+        else:
+            print(f"[{session_id}] Score not improved (existing={existing_score}, new={score:.2f}), skipping update")
+    
+    except ClientError as e:
+        print(f"[{session_id}] Failed to update leaderboard: {e}")
+    except Exception as e:
+        print(f"[{session_id}] Error updating leaderboard: {e}")
 
 # -------------------------------------------------
 # Fetch system prompt via session -> challenge
