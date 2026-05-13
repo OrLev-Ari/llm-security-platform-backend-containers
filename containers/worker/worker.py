@@ -156,8 +156,7 @@ def update_leaderboard_scores(user_id, challenge_id, score, prompt_count, time_s
                         "user_id": user_id,
                         "total_score": int(new_total),
                         "challenges_completed": new_challenges,
-                        "last_updated": completed_at,
-                        "leaderboard_type": "GLOBAL"  # Fixed partition key for GSI
+                        "last_updated": completed_at
                     }
                 )
                 print(f"[{session_id}] GlobalScoresTable updated: total={new_total:.2f}, challenges={new_challenges}")
@@ -168,8 +167,7 @@ def update_leaderboard_scores(user_id, challenge_id, score, prompt_count, time_s
                         "user_id": user_id,
                         "total_score": int(score),
                         "challenges_completed": 1,
-                        "last_updated": completed_at,
-                        "leaderboard_type": "GLOBAL"  # Fixed partition key for GSI
+                        "last_updated": completed_at
                     }
                 )
                 print(f"[{session_id}] GlobalScoresTable created for new user: total={score:.2f}")
